@@ -1,0 +1,355 @@
+{
+  "info": {
+    "name": "One Platform - All APIs",
+    "_postman_id": "00f54f26-a711-4d4f-bb7f-2fcb2e5765cf",
+    "description": "Combined Postman collection for backend + car + airbnb APIs in one-platform.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Backend (Nest)",
+      "item": [
+        {
+          "name": "Index",
+          "request": { "method": "GET", "header": [], "url": "{{backendApiBase}}" }
+        },
+        {
+          "name": "Health",
+          "request": { "method": "GET", "header": [], "url": "{{backendApiBase}}/health" }
+        },
+        {
+          "name": "AI Health",
+          "request": { "method": "GET", "header": [], "url": "{{backendApiBase}}/ai-health" }
+        },
+        {
+          "name": "Kafka Health",
+          "request": { "method": "GET", "header": [], "url": "{{backendApiBase}}/kafka-health" }
+        },
+        {
+          "name": "Platforms",
+          "request": { "method": "GET", "header": [], "url": "{{backendApiBase}}/platforms" }
+        },
+        {
+          "name": "Platform By ID",
+          "request": { "method": "GET", "header": [], "url": "{{backendApiBase}}/platforms/car" }
+        },
+        {
+          "name": "SEO By Slug",
+          "request": { "method": "GET", "header": [], "url": "{{backendApiBase}}/seo/london-manchester" }
+        },
+        {
+          "name": "Pricing By Route",
+          "request": { "method": "GET", "header": [], "url": "{{backendApiBase}}/pricing/LHR-MAN" }
+        },
+        {
+          "name": "Predict By Route",
+          "request": { "method": "GET", "header": [], "url": "{{backendApiBase}}/predict/LHR-MAN" }
+        },
+        {
+          "name": "Track Event",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"page_view\",\n  \"source\": \"postman\",\n  \"meta\": {\n    \"path\": \"/car\"\n  }\n}"
+            },
+            "url": "{{backendApiBase}}/track"
+          }
+        },
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"listing_demo_001\",\n  \"guestId\": \"guest_demo_001\",\n  \"startDate\": \"2026-05-12\",\n  \"endDate\": \"2026-05-15\",\n  \"idempotencyKey\": \"idem-001\",\n  \"platform\": \"web\",\n  \"price\": 220\n}"
+            },
+            "url": "{{backendApiBase}}/bookings"
+          }
+        },
+        {
+          "name": "List Bookings By Listing",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{backendApiBase}}/bookings/listing/listing_demo_001"
+          }
+        },
+        {
+          "name": "Get Booking By ID",
+          "request": { "method": "GET", "header": [], "url": "{{backendApiBase}}/bookings/{{bookingId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Car API (via /api)",
+      "item": [
+        {
+          "name": "Health",
+          "request": { "method": "GET", "header": [], "url": "{{carApiBase}}/health" }
+        },
+        {
+          "name": "Listings",
+          "request": { "method": "GET", "header": [], "url": "{{carApiBase}}/listings" }
+        },
+        {
+          "name": "Listing By ID",
+          "request": { "method": "GET", "header": [], "url": "{{carApiBase}}/listing/{{listingId}}" }
+        },
+        {
+          "name": "Listing Settings",
+          "request": { "method": "GET", "header": [], "url": "{{carApiBase}}/listing/{{listingId}}/settings" }
+        },
+        {
+          "name": "Update Listing Settings",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"minPrice\": 45,\n  \"maxPrice\": 250,\n  \"smartPricingEnabled\": true,\n  \"discounts\": {\n    \"weekly\": 10,\n    \"monthly\": 20\n  }\n}"
+            },
+            "url": "{{carApiBase}}/listing/{{listingId}}/settings"
+          }
+        },
+        {
+          "name": "Pricing Try Values",
+          "request": { "method": "GET", "header": [], "url": "{{carApiBase}}/pricing-try-values?listingId={{listingId}}" }
+        },
+        {
+          "name": "Pricing Calendar",
+          "request": { "method": "GET", "header": [], "url": "{{carApiBase}}/pricing-calendar?listingId={{listingId}}&days=30" }
+        },
+        {
+          "name": "Pricing Signals",
+          "request": { "method": "GET", "header": [], "url": "{{carApiBase}}/pricing-signals?listingId={{listingId}}" }
+        },
+        {
+          "name": "Demand Data",
+          "request": { "method": "GET", "header": [], "url": "{{carApiBase}}/demand-data?listingId={{listingId}}&days=30" }
+        },
+        {
+          "name": "Override Price",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"date\": \"2026-05-10\",\n  \"price\": 99,\n  \"reason\": \"manual adjustment\"\n}"
+            },
+            "url": "{{carApiBase}}/override-price"
+          }
+        },
+        {
+          "name": "Audit Logs",
+          "request": { "method": "GET", "header": [], "url": "{{carApiBase}}/audit-logs?listingId={{listingId}}&limit=100" }
+        },
+        {
+          "name": "Quote Help",
+          "request": { "method": "GET", "header": [], "url": "{{carApiBase}}/quote" }
+        },
+        {
+          "name": "Quote",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}", "disabled": true }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"city\": \"London\",\n  \"group\": \"Economy\",\n  \"rental_length\": 2,\n  \"start_date\": \"2023-07-25\",\n  \"start_time\": \"10:00\",\n  \"return_date\": \"2023-07-27\",\n  \"return_time\": \"10:00\"\n}"
+            },
+            "url": "{{carApiBase}}/quote"
+          }
+        },
+        {
+          "name": "Quote Batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}", "disabled": true }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"city\": \"London\",\n      \"group\": \"Economy\",\n      \"rental_length\": 2,\n      \"start_date\": \"2023-07-25\",\n      \"start_time\": \"10:00\",\n      \"return_date\": \"2023-07-27\",\n      \"return_time\": \"10:00\"\n    }\n  ]\n}"
+            },
+            "url": "{{carApiBase}}/quote/batch"
+          }
+        },
+        {
+          "name": "Quote Demo POST",
+          "request": { "method": "POST", "header": [], "url": "{{carApiBase}}/quote/demo" }
+        },
+        {
+          "name": "Quote Demo GET",
+          "request": { "method": "GET", "header": [], "url": "{{carApiBase}}/quote/demo" }
+        },
+        {
+          "name": "Simulate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"city\": \"London\",\n  \"group\": \"Economy\",\n  \"rental_length\": 2,\n  \"start_date\": \"2023-07-25\",\n  \"start_time\": \"10:00\",\n  \"return_date\": \"2023-07-27\",\n  \"return_time\": \"10:00\",\n  \"window_pct\": 0.5,\n  \"step_gbp\": 5\n}"
+            },
+            "url": "{{carApiBase}}/simulate"
+          }
+        },
+        {
+          "name": "Optimize",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"city\": \"London\",\n  \"group\": \"Economy\",\n  \"rental_length\": 2,\n  \"start_date\": \"2023-07-25\",\n  \"start_time\": \"10:00\",\n  \"return_date\": \"2023-07-27\",\n  \"return_time\": \"10:00\",\n  \"min_price_gbp\": 10,\n  \"max_price_gbp\": 400,\n  \"step_gbp\": 5,\n  \"window_pct\": 0.5\n}"
+            },
+            "url": "{{carApiBase}}/optimize"
+          }
+        },
+        {
+          "name": "Admin Config",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Admin-Key", "value": "{{adminKey}}" }],
+            "url": "{{carApiBase}}/admin/config"
+          }
+        },
+        {
+          "name": "Admin Kill Switch",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Admin-Key", "value": "{{adminKey}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"enabled\": false\n}" },
+            "url": "{{carApiBase}}/admin/kill-switch"
+          }
+        },
+        {
+          "name": "Admin Global Caps",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Admin-Key", "value": "{{adminKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"min_price_gbp\": 5,\n  \"max_price_gbp\": 8000,\n  \"max_pct_change\": 0.2,\n  \"smoothing_alpha\": 0.8\n}"
+            },
+            "url": "{{carApiBase}}/admin/global-caps"
+          }
+        },
+        {
+          "name": "Admin Region Override",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Admin-Key", "value": "{{adminKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"region\": \"london\",\n  \"min_price_gbp\": 10,\n  \"max_price_gbp\": 1000,\n  \"max_pct_change\": 0.25,\n  \"smoothing_alpha\": 0.8,\n  \"multiplier\": 1.05\n}"
+            },
+            "url": "{{carApiBase}}/admin/region-override"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Airbnb API (via /api/airbnb)",
+      "item": [
+        {
+          "name": "Health",
+          "request": { "method": "GET", "header": [], "url": "{{airbnbApiBase}}/health" }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin\"\n}"
+            },
+            "url": "{{airbnbApiBase}}/auth/login"
+          }
+        },
+        {
+          "name": "Listings",
+          "request": { "method": "GET", "header": [], "url": "{{airbnbApiBase}}/listings?limit=50" }
+        },
+        {
+          "name": "Pricing by Listing",
+          "request": { "method": "GET", "header": [], "url": "{{airbnbApiBase}}/pricing/{{listingId}}" }
+        },
+        {
+          "name": "Save Host Settings",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{airbnbToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"smart_pricing_enabled\": true,\n  \"min_price\": 30,\n  \"max_price\": 300,\n  \"base_price\": 120,\n  \"pricing_goal\": \"balanced\",\n  \"risk_tolerance\": \"medium\",\n  \"update_frequency\": \"daily\",\n  \"discount_floor_protection\": true,\n  \"locked_dates\": [],\n  \"blackout_dates\": []\n}"
+            },
+            "url": "{{airbnbApiBase}}/host/settings/{{listingId}}"
+          }
+        },
+        {
+          "name": "Simulation Run",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listing_id\": \"{{listingId}}\",\n  \"custom_price\": 150\n}"
+            },
+            "url": "{{airbnbApiBase}}/simulation/run"
+          }
+        },
+        {
+          "name": "Admin Status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{airbnbToken}}" }],
+            "url": "{{airbnbApiBase}}/admin/status"
+          }
+        },
+        {
+          "name": "Admin Kill Switch",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{airbnbToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"enabled\": false,\n  \"region\": null\n}" },
+            "url": "{{airbnbApiBase}}/admin/kill-switch"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost" },
+    { "key": "backendApiBase", "value": "{{baseUrl}}/api" },
+    { "key": "carApiBase", "value": "{{baseUrl}}/api" },
+    { "key": "airbnbApiBase", "value": "{{baseUrl}}/api/airbnb" },
+    { "key": "apiKey", "value": "" },
+    { "key": "adminKey", "value": "" },
+    { "key": "airbnbToken", "value": "" },
+    { "key": "listingId", "value": "1" },
+    { "key": "bookingId", "value": "replace-with-booking-id" }
+  ]
+}

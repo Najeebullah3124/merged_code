@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Commission Engine Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Smart Commission Engine Demo</h1>
+      <p class="subtext">Interactive pricing demo with explainable markup decisions.</p>
+
+      <section class="card">
+        <h2>Pricing Inputs</h2>
+        <div class="grid">
+          <label>Listing
+            <select id="listingSelect"></select>
+          </label>
+          <label>Demand Score (0-1)
+            <input id="demandScore" type="number" min="0" max="1" step="0.01" value="0.8" />
+          </label>
+          <label>Elasticity Score (negative means sensitive)
+            <input id="elasticityScore" type="number" step="0.01" value="-1.2" />
+          </label>
+          <label>Conversion Probability (0-1)
+            <input id="conversionProbability" type="number" min="0" max="1" step="0.01" value="0.67" />
+          </label>
+          <label>Competitor Gap
+            <input id="competitorGap" type="number" step="0.01" value="0.1" />
+          </label>
+          <label>User ID (for A/B assignment)
+            <input id="userId" type="text" value="demo-user-1" />
+          </label>
+          <label>Variant Override
+            <select id="variant">
+              <option value="">Auto assign</option>
+              <option value="control_static">Control (Static 10%)</option>
+              <option value="variant_ai">Variant (AI Dynamic)</option>
+            </select>
+          </label>
+        </div>
+        <button id="simulateBtn">Simulate Dynamic Price</button>
+      </section>
+
+      <section class="card">
+        <h2>Output</h2>
+        <div id="status" class="status">Ready.</div>
+        <div id="result" class="result hidden">
+          <p><strong>Base Price:</strong> <span id="basePrice"></span></p>
+          <p><strong>Markup:</strong> <span id="markup"></span></p>
+          <p><strong>Final Price:</strong> <span id="finalPrice"></span></p>
+          <p><strong>Experiment Variant:</strong> <span id="experimentVariant"></span></p>
+          <p><strong>Fraud Guard Risk:</strong> <span id="fraudRisk"></span></p>
+          <p><strong>Fee Range Preview:</strong> <span id="feeRange"></span></p>
+          <p><strong>Optimization Tip:</strong> <span id="optimizationTip"></span></p>
+          <p><strong>Why this price:</strong></p>
+          <ul id="explanationList"></ul>
+        </div>
+      </section>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>

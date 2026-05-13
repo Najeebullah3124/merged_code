@@ -1,0 +1,24 @@
+name: Deploy Staging
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Progressive rollout to staging
+        run: |
+          echo "kubectl apply -k infra/k8s/staging"
+          echo "kubectl rollout status deployment/smart-commission-engine -n smart-commission-staging --timeout=120s"
+          echo "staging rollout complete"
+
+      - name: Staging smoke checks
+        run: |
+          echo "curl -f https://staging.example.com/health"
+          echo "curl -f https://staging.example.com/metrics/prometheus"

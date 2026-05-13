@@ -7,5 +7,14 @@
       "weekly": 10.0,
       "monthly": 20.0
     }
+  },
+  "lst_9502866c86862693": {
+    "minPrice": 40.0,
+    "maxPrice": 180.0,
+    "smartPricingEnabled": true,
+    "discounts": {
+      "weekly": 10.0,
+      "monthly": 20.0
+    }
   }
 }

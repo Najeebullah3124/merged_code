@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Simulation Intelligence — Host preview</title>
+    <link rel="stylesheet" href="/ui/static/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+    <script src="/ui/static/app.js" defer></script>
+  </head>
+  <body>
+    <header class="top">
+      <div>
+        <h1>Simulation Intelligence</h1>
+        <p class="sub">Demand, risk, price scenarios, and net revenue in one window.</p>
+      </div>
+    </header>
+
+    <section class="panel controls">
+      <div class="row">
+        <label>Listing ID <input type="text" id="listingId" value="10001" /></label>
+        <label>Vertical
+          <select id="vertical">
+            <option value="lodging" selected>Lodging</option>
+            <option value="car">Car</option>
+          </select>
+        </label>
+        <label>Start <input type="datetime-local" id="t0" /></label>
+        <label>End <input type="datetime-local" id="t1" /></label>
+      </div>
+      <div class="row">
+        <label>Price scenarios (comma-separated)
+          <input type="text" id="prices" value="80, 100, 120, 150" class="wide" />
+        </label>
+      </div>
+      <div class="row">
+        <label>Demand shift <input type="number" id="dShift" value="0" step="0.05" /></label>
+        <label>Risk shift <input type="number" id="rShift" value="0" step="0.05" /></label>
+        <button type="button" id="runBtn" class="primary">Run simulation</button>
+      </div>
+      <p id="err" class="err" hidden></p>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Timeline</h2>
+        <canvas id="chartTime"></canvas>
+      </div>
+      <div class="card">
+        <h2>Price vs window revenue</h2>
+        <canvas id="chartPrice"></canvas>
+      </div>
+    </section>
+
+    <section class="panel rec" id="recBox" hidden>
+      <h2>AI-style recommendation</h2>
+      <p id="recText"></p>
+    </section>
+  </body>
+</html>

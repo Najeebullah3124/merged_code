@@ -20,11 +20,17 @@ services:
       - "8000"
     environment:
       SWYFT_INTEGRATED_CAR: "1"
+      CAR_DB_HOST: "34.203.45.126"
+      CAR_DB_PORT: "5432"
+      CAR_DB_NAME: "cars_service"
+      CAR_DB_USER: "root"
+      CAR_DB_PASSWORD: "rootpassword"
+      CAR_DB_TABLE: "car_service"
 
   airbnb-api:
     build:
-      context: ../../smart Prcing Airbnb
-      dockerfile: backend/Dockerfile
+      context: ../../smart Prcing Airbnb/backend
+      dockerfile: Dockerfile
     expose:
       - "8100"
     environment:

@@ -1,0 +1,18 @@
+{
+  "name": "smart-commission-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Starter implementation of dynamic markup optimization engine.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test",
+    "loadtest": "node tools/loadtest.js",
+    "chaos": "node tools/chaos.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "mongoose": "^8.19.2"
+  }
+}
