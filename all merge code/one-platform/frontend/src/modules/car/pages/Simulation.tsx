@@ -70,8 +70,27 @@ export function SimulationPage() {
     };
   }, [sim]);
 
+  function validateForm(): string | null {
+    if (!city.trim()) return "City is required.";
+    if (!country.trim()) return "Country is required.";
+    if (!group.trim()) return "Group is required.";
+    if (!startDate || !returnDate) return "Start and return dates are required.";
+    if (returnDate < startDate) return "Return date must be on or after start date.";
+    if (!Number.isFinite(step) || step <= 0) return "Price step must be greater than 0.";
+    if (!Number.isFinite(minPrice) || minPrice <= 0) return "Min price must be greater than 0.";
+    if (!Number.isFinite(maxPrice) || maxPrice <= 0) return "Max price must be greater than 0.";
+    if (maxPrice < minPrice) return "Max price must be greater than or equal to min price.";
+    if (!Number.isFinite(windowPct) || windowPct < 0 || windowPct > 5) return "Window % must be between 0 and 5.";
+    return null;
+  }
+
   async function run() {
     if (!token) return;
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {

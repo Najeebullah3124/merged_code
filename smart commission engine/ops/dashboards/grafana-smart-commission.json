@@ -1,0 +1,34 @@
+{
+  "title": "Smart Commission Engine",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "title": "Route Error Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "avg(smart_commission_route_error_rate)"
+        }
+      ]
+    },
+    {
+      "title": "Route P95 Latency",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "avg(smart_commission_route_p95_ms)"
+        }
+      ]
+    },
+    {
+      "title": "Request Volume",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(smart_commission_route_requests_total)"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,350 @@
+{
+  "info": {
+    "name": "Car API - one-platform",
+    "_postman_id": "c9f6f1e1-2d7b-4b8e-9b8a-64e8c1ab3f71",
+    "description": "Postman collection for one-platform/car-api endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health & Index",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          }
+        },
+        {
+          "name": "Index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Listings",
+      "item": [
+        {
+          "name": "Get Listings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/listings"
+          }
+        },
+        {
+          "name": "Get Listing By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/listing/{{listingId}}"
+          }
+        },
+        {
+          "name": "Get Listing Settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/listing/{{listingId}}/settings"
+          }
+        },
+        {
+          "name": "Update Listing Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"minPrice\": 45,\n  \"maxPrice\": 220,\n  \"smartPricingEnabled\": true,\n  \"discounts\": {\n    \"weekly\": 10,\n    \"monthly\": 20\n  }\n}"
+            },
+            "url": "{{baseUrl}}/listing/{{listingId}}/settings"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pricing & Demand",
+      "item": [
+        {
+          "name": "Pricing Try Values",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/pricing-try-values?listingId={{listingId}}"
+          }
+        },
+        {
+          "name": "Pricing Calendar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/pricing-calendar?listingId={{listingId}}&days=30"
+          }
+        },
+        {
+          "name": "Pricing Signals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/pricing-signals?listingId={{listingId}}"
+          }
+        },
+        {
+          "name": "Demand Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/demand-data?listingId={{listingId}}&days=30"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Override & Audit",
+      "item": [
+        {
+          "name": "Override Price",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"listingId\": \"{{listingId}}\",\n  \"date\": \"2026-05-10\",\n  \"price\": 99,\n  \"reason\": \"manual adjustment\"\n}"
+            },
+            "url": "{{baseUrl}}/override-price"
+          }
+        },
+        {
+          "name": "Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/audit-logs?listingId={{listingId}}&limit=100"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quote / Simulate / Optimize",
+      "item": [
+        {
+          "name": "Quote Help (GET)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/quote"
+          }
+        },
+        {
+          "name": "Quote (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"airport\": \"Heathrow Airport\",\n  \"airport_iata\": \"LHR\",\n  \"country\": \"GB\",\n  \"city\": \"London\",\n  \"rental_length\": 2,\n  \"start_date\": \"2023-07-25\",\n  \"start_time\": \"10:00\",\n  \"return_date\": \"2023-07-27\",\n  \"return_time\": \"10:00\",\n  \"group\": \"Economy\",\n  \"transmission\": \"Manual\",\n  \"supplier_name\": \"Green Motion\",\n  \"product_name\": \"Kia Rio\"\n}"
+            },
+            "url": "{{baseUrl}}/quote"
+          }
+        },
+        {
+          "name": "Quote Batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"city\": \"London\",\n      \"group\": \"Economy\",\n      \"rental_length\": 2,\n      \"start_date\": \"2023-07-25\",\n      \"start_time\": \"10:00\",\n      \"return_date\": \"2023-07-27\",\n      \"return_time\": \"10:00\"\n    },\n    {\n      \"city\": \"Manchester\",\n      \"group\": \"Compact\",\n      \"rental_length\": 3,\n      \"start_date\": \"2023-08-01\",\n      \"start_time\": \"11:00\",\n      \"return_date\": \"2023-08-04\",\n      \"return_time\": \"11:00\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/quote/batch"
+          }
+        },
+        {
+          "name": "Quote Demo (POST)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/quote/demo"
+          }
+        },
+        {
+          "name": "Quote Demo (GET)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/quote/demo"
+          }
+        },
+        {
+          "name": "Simulate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"city\": \"London\",\n  \"group\": \"Economy\",\n  \"rental_length\": 2,\n  \"start_date\": \"2023-07-25\",\n  \"start_time\": \"10:00\",\n  \"return_date\": \"2023-07-27\",\n  \"return_time\": \"10:00\",\n  \"window_pct\": 0.5,\n  \"step_gbp\": 5\n}"
+            },
+            "url": "{{baseUrl}}/simulate"
+          }
+        },
+        {
+          "name": "Optimize",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"city\": \"London\",\n  \"group\": \"Economy\",\n  \"rental_length\": 2,\n  \"start_date\": \"2023-07-25\",\n  \"start_time\": \"10:00\",\n  \"return_date\": \"2023-07-27\",\n  \"return_time\": \"10:00\",\n  \"min_price_gbp\": 10,\n  \"max_price_gbp\": 400,\n  \"step_gbp\": 5,\n  \"window_pct\": 0.5\n}"
+            },
+            "url": "{{baseUrl}}/optimize"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get Admin Config",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": "{{baseUrl}}/admin/config"
+          }
+        },
+        {
+          "name": "Admin Kill Switch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false\n}"
+            },
+            "url": "{{baseUrl}}/admin/kill-switch"
+          }
+        },
+        {
+          "name": "Admin Global Caps",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"min_price_gbp\": 5,\n  \"max_price_gbp\": 8000,\n  \"max_pct_change\": 0.2,\n  \"smoothing_alpha\": 0.8\n}"
+            },
+            "url": "{{baseUrl}}/admin/global-caps"
+          }
+        },
+        {
+          "name": "Admin Region Override",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"region\": \"london\",\n  \"min_price_gbp\": 10,\n  \"max_price_gbp\": 1000,\n  \"max_pct_change\": 0.25,\n  \"smoothing_alpha\": 0.8,\n  \"multiplier\": 1.05\n}"
+            },
+            "url": "{{baseUrl}}/admin/region-override"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "apiKey",
+      "value": ""
+    },
+    {
+      "key": "adminKey",
+      "value": ""
+    },
+    {
+      "key": "listingId",
+      "value": "lst_0000000000000000"
+    }
+  ]
+}

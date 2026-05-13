@@ -1,0 +1,19 @@
+groups:
+  - name: smart-commission-slo
+    rules:
+      - alert: SmartCommissionHighErrorRateFastBurn
+        expr: avg(smart_commission_route_error_rate) > 0.02
+        for: 5m
+        labels:
+          severity: critical
+          service: smart-commission-engine
+        annotations:
+          summary: "Fast burn: route error rate above 2%"
+      - alert: SmartCommissionHighLatency
+        expr: avg(smart_commission_route_p95_ms) > 800
+        for: 10m
+        labels:
+          severity: warning
+          service: smart-commission-engine
+        annotations:
+          summary: "P95 latency above 800ms"

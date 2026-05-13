@@ -1,0 +1,5 @@
+{
+  "admin": ["admin:write", "fraud:write", "host:write", "pricing:read"],
+  "analyst": ["pricing:read"],
+  "host_manager": ["host:write", "pricing:read"]
+}

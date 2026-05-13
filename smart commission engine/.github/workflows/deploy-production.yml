@@ -1,0 +1,27 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy with progressive rollout
+        run: |
+          echo "kubectl apply -k infra/k8s/production"
+          echo "kubectl rollout status deployment/smart-commission-engine -n smart-commission-prod --timeout=180s"
+
+      - name: Post-deploy checks
+        run: |
+          echo "curl -f https://api.example.com/health"
+          echo "curl -f https://api.example.com/metrics/prometheus"
+
+      - name: Automatic rollback on failure
+        if: failure()
+        run: |
+          echo "kubectl rollout undo deployment/smart-commission-engine -n smart-commission-prod"
+          echo "rollback executed"

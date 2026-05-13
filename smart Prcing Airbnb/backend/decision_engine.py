@@ -3,7 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-from .pricing_engine import ListingSignals, clamp, expected_revenue
+try:
+    from .pricing_engine import ListingSignals, clamp, expected_revenue
+except ImportError:
+    from pricing_engine import ListingSignals, clamp, expected_revenue
 
 
 @dataclass

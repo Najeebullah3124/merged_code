@@ -1,0 +1,125 @@
+:root {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: #0f1419;
+  color: #e8eef5;
+}
+
+body {
+  margin: 0;
+  padding: 0 1.25rem 2rem;
+  max-width: 1200px;
+  margin-inline: auto;
+}
+
+.top {
+  padding: 1.75rem 0 0.5rem;
+}
+
+h1 {
+  margin: 0;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.sub {
+  margin: 0.35rem 0 0;
+  color: #9fb0c3;
+  font-size: 0.95rem;
+}
+
+.panel {
+  background: #1a222d;
+  border: 1px solid #2a3544;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  margin-top: 1rem;
+}
+
+.controls .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: flex-end;
+  margin-bottom: 0.65rem;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  color: #b8c7d9;
+}
+
+input,
+select {
+  background: #0f1419;
+  border: 1px solid #3d4f63;
+  color: #e8eef5;
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  min-width: 8rem;
+}
+
+input.wide {
+  min-width: 280px;
+}
+
+button.primary {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  border: none;
+  color: #fff;
+  padding: 0.55rem 1.1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.primary:hover {
+  filter: brightness(1.06);
+}
+
+.err {
+  color: #f87171;
+  margin: 0.5rem 0 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.card {
+  background: #1a222d;
+  border: 1px solid #2a3544;
+  border-radius: 12px;
+  padding: 0.75rem 1rem 1.25rem;
+}
+
+.card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.rec {
+  margin-top: 1rem;
+}
+
+.rec h2 {
+  margin-top: 0;
+}
+
+#recText {
+  color: #dbeafe;
+  line-height: 1.55;
+}

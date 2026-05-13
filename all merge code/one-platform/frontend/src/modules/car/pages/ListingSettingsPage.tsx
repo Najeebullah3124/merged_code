@@ -27,8 +27,22 @@ export function ListingSettingsPage() {
     })();
   }, [id]);
 
+  function validateForm(): string | null {
+    if (!Number.isFinite(minP) || minP <= 0) return "Min price must be greater than 0.";
+    if (!Number.isFinite(maxP) || maxP <= 0) return "Max price must be greater than 0.";
+    if (maxP < minP) return "Max price must be greater than or equal to min price.";
+    if (!Number.isFinite(weekly) || weekly < 0 || weekly > 100) return "Weekly discount must be between 0 and 100.";
+    if (!Number.isFinite(monthly) || monthly < 0 || monthly > 100) return "Monthly discount must be between 0 and 100.";
+    return null;
+  }
+
   async function save() {
     if (!token || !id) return;
+    const validationError = validateForm();
+    if (validationError) {
+      setMsg(validationError);
+      return;
+    }
     const r = await apiFetch(`/api/listing/${encodeURIComponent(id)}/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

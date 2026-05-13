@@ -9,22 +9,25 @@ Train models first:  python car.py
 
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 import logging
 import math
 import os
-from datetime import date, timedelta
+import re
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated
 
 import pandas as pd
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from prometheus_client import Counter
 from prometheus_fastapi_instrumentator import Instrumentator
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -85,9 +88,22 @@ DATASET_PATH = Path(__file__).resolve().parent / "car rental sample_augmented_de
 OVERRIDES_PATH = Path(__file__).resolve().parent / "runtime" / "price_overrides.json"
 LISTING_SETTINGS_PATH = Path(__file__).resolve().parent / "runtime" / "listing_settings.json"
 OVERRIDE_AUDIT_PATH = Path(__file__).resolve().parent / "runtime" / "override_audit.jsonl"
+APPROVALS_PATH = Path(__file__).resolve().parent / "runtime" / "listing_approvals.json"
 
 _listings_cache: list[dict] | None = None
 _listing_by_id: dict[str, dict] | None = None
+ALLOWED_APPROVAL_STATUSES = {"pending", "approved", "rejected"}
+ALLOWED_LISTING_SORT_FIELDS = {
+    "title": "title",
+    "city": "city",
+    "country": "country",
+    "group": "group",
+    "supplierName": "supplier_name",
+    "avgPrice": "avgPrice",
+    "revenue": "revenue",
+    "occupancyRate": "occupancyRate",
+    "approvalStatus": "approvalStatus",
+}
 
 
 def get_service() -> CarRentalPricingService:
@@ -160,6 +176,161 @@ def _load_listing_settings() -> dict[str, dict]:
 def _save_listing_settings(data: dict[str, dict]) -> None:
     LISTING_SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     LISTING_SETTINGS_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _load_listing_approvals() -> dict[str, dict]:
+    if not APPROVALS_PATH.is_file():
+        return {}
+    try:
+        raw = json.loads(APPROVALS_PATH.read_text(encoding="utf-8"))
+        if isinstance(raw, dict):
+            return {str(k): v for k, v in raw.items() if isinstance(v, dict)}
+    except Exception:
+        pass
+    return {}
+
+
+def _save_listing_approvals(data: dict[str, dict]) -> None:
+    APPROVALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    APPROVALS_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def _approval_for(listing_id: str) -> dict[str, str | None]:
+    approval = _load_listing_approvals().get(listing_id, {})
+    status = str(approval.get("approvalStatus") or "pending").strip().lower()
+    if status not in ALLOWED_APPROVAL_STATUSES:
+        status = "pending"
+    return {
+        "approvalStatus": status,
+        "approvalReason": str(approval.get("approvalReason")) if approval.get("approvalReason") is not None else None,
+        "reviewedBy": str(approval.get("reviewedBy")) if approval.get("reviewedBy") is not None else None,
+        "reviewedAt": str(approval.get("reviewedAt")) if approval.get("reviewedAt") is not None else None,
+    }
+
+
+def _decorate_listing(item: dict) -> dict:
+    return {**item, **_approval_for(str(item.get("id", "")))}
+
+
+def _filtered_listings(
+    *,
+    search: str | None = None,
+    city: str | None = None,
+    country: str | None = None,
+    group: str | None = None,
+    supplier_name: str | None = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
+    approval_status: str | None = None,
+    sort_by: str = "title",
+    sort_order: str = "asc",
+) -> list[dict]:
+    rows, _ = _ensure_listings_cache()
+    items = [_decorate_listing(row) for row in rows]
+
+    search_needle = (search or "").strip().lower()
+    city_needle = (city or "").strip().lower()
+    country_needle = (country or "").strip().lower()
+    group_needle = (group or "").strip().lower()
+    supplier_needle = (supplier_name or "").strip().lower()
+    approval_needle = (approval_status or "").strip().lower()
+
+    out: list[dict] = []
+    for item in items:
+        haystack = " ".join(
+            [
+                str(item.get("title", "")),
+                str(item.get("location", "")),
+                str(item.get("city", "")),
+                str(item.get("country", "")),
+                str(item.get("group", "")),
+                str(item.get("supplier_name", "")),
+            ]
+        ).lower()
+        if search_needle and search_needle not in haystack:
+            continue
+        if city_needle and str(item.get("city", "")).strip().lower() != city_needle:
+            continue
+        if country_needle and str(item.get("country", "")).strip().lower() != country_needle:
+            continue
+        if group_needle and str(item.get("group", "")).strip().lower() != group_needle:
+            continue
+        if supplier_needle and supplier_needle not in str(item.get("supplier_name", "")).strip().lower():
+            continue
+        avg_price = float(item.get("avgPrice", 0) or 0)
+        if min_price is not None and avg_price < min_price:
+            continue
+        if max_price is not None and avg_price > max_price:
+            continue
+        if approval_needle:
+            normalized_status = approval_needle if approval_needle in ALLOWED_APPROVAL_STATUSES else "pending"
+            if str(item.get("approvalStatus", "pending")).lower() != normalized_status:
+                continue
+        out.append(item)
+
+    key_name = ALLOWED_LISTING_SORT_FIELDS.get(sort_by, "title")
+    reverse = str(sort_order).lower() == "desc"
+    out.sort(key=lambda x: (x.get(key_name) is None, str(x.get(key_name, "")).lower() if isinstance(x.get(key_name), str) else x.get(key_name, 0)), reverse=reverse)
+    return out
+
+
+def _paginate(items: list[dict], *, page: int, page_size: int) -> dict:
+    safe_page = max(1, page)
+    safe_page_size = max(1, min(page_size, 100))
+    total = len(items)
+    total_pages = max(1, math.ceil(total / safe_page_size)) if total else 1
+    start_idx = (safe_page - 1) * safe_page_size
+    end_idx = start_idx + safe_page_size
+    return {
+        "items": items[start_idx:end_idx],
+        "pagination": {
+            "page": safe_page,
+            "pageSize": safe_page_size,
+            "total": total,
+            "totalPages": total_pages,
+            "hasNext": safe_page < total_pages,
+            "hasPrevious": safe_page > 1,
+        },
+    }
+
+
+def _to_csv_response(filename: str, rows: list[dict], fieldnames: list[str]) -> Response:
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=fieldnames)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({k: row.get(k) for k in fieldnames})
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _dashboard_payload(listings: list[dict]) -> dict:
+    revenue = sum(float(x.get("revenue", 0) or 0) for x in listings)
+    avg_occ = (sum(float(x.get("occupancyRate", 0) or 0) for x in listings) / len(listings)) if listings else 0.0
+    avg_price = (sum(float(x.get("avgPrice", 0) or 0) for x in listings) / len(listings)) if listings else 0.0
+    active_bookings_proxy = round(sum(float(x.get("occupancyRate", 0) or 0) for x in listings) * 10)
+    approved = sum(1 for x in listings if x.get("approvalStatus") == "approved")
+    pending = sum(1 for x in listings if x.get("approvalStatus") == "pending")
+    rejected = sum(1 for x in listings if x.get("approvalStatus") == "rejected")
+    return {
+        "summary": {
+            "projectedRevenue": round(revenue, 2),
+            "estimatedOccupancy": round(avg_occ, 4),
+            "averageDailyRate": round(avg_price, 2),
+            "activeBookingsProxy": active_bookings_proxy,
+            "approvedCount": approved,
+            "pendingCount": pending,
+            "rejectedCount": rejected,
+        },
+        "items": listings,
+    }
 
 
 def _default_settings_for(item: dict) -> dict:
@@ -238,17 +409,57 @@ def _make_listing_id(city: str, group: str, supplier: str, product: str) -> str:
     return f"lst_{h}"
 
 
+def _load_source_df() -> pd.DataFrame:
+    # Optional Postgres source. If not configured/reachable, fallback to bundled CSV.
+    db_host = os.environ.get("CAR_DB_HOST", "").strip()
+    db_name = os.environ.get("CAR_DB_NAME", "").strip()
+    db_user = os.environ.get("CAR_DB_USER", "").strip()
+    db_password = os.environ.get("CAR_DB_PASSWORD", "").strip()
+    db_port = int(os.environ.get("CAR_DB_PORT", "5432"))
+    db_table = os.environ.get("CAR_DB_TABLE", "car_service").strip() or "car_service"
+
+    if db_host and db_name and db_user and db_password:
+        try:
+            import psycopg2  # type: ignore
+
+            safe_table = re.sub(r"[^a-zA-Z0-9_]", "", db_table)
+            if not safe_table:
+                safe_table = "car_service"
+
+            conn = psycopg2.connect(
+                host=db_host,
+                port=db_port,
+                dbname=db_name,
+                user=db_user,
+                password=db_password,
+            )
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(f'SELECT * FROM "{safe_table}"')
+                    rows = cur.fetchall()
+                    cols = [d.name for d in cur.description] if cur.description else []
+                return pd.DataFrame(rows, columns=cols)
+            finally:
+                conn.close()
+        except Exception as e:
+            logging.warning("Failed loading car data from Postgres; falling back to CSV: %s", e)
+
+    if not DATASET_PATH.is_file():
+        return pd.DataFrame()
+    return pd.read_csv(DATASET_PATH)
+
+
 def _ensure_listings_cache() -> tuple[list[dict], dict[str, dict]]:
     global _listings_cache, _listing_by_id
     if _listings_cache is not None and _listing_by_id is not None:
         return _listings_cache, _listing_by_id
 
-    if not DATASET_PATH.is_file():
+    df = _load_source_df()
+    if df.empty:
         _listings_cache = []
         _listing_by_id = {}
         return _listings_cache, _listing_by_id
 
-    df = pd.read_csv(DATASET_PATH)
     for c in ["city", "group", "supplier_name", "product_name"]:
         if c not in df.columns:
             df[c] = "unknown"
@@ -368,6 +579,16 @@ class QuoteRequest(BaseModel):
     deposit_price: float | None = None
     drive_away_price: float | None = None
 
+    @model_validator(mode="after")
+    def validate_quote_request(self):
+        if self.rental_length <= 0:
+            raise ValueError("rental_length must be greater than 0")
+        start = date.fromisoformat(self.start_date)
+        end = date.fromisoformat(self.return_date)
+        if end < start:
+            raise ValueError("return_date must be on or after start_date")
+        return self
+
 
 class BatchQuoteRequest(BaseModel):
     items: list[QuoteRequest] = Field(..., min_length=1, max_length=50)
@@ -378,6 +599,12 @@ class OptimizeRequest(QuoteRequest):
     max_price_gbp: float = Field(default=8000.0, ge=0.01)
     step_gbp: float = Field(default=5.0, ge=0.01)
     window_pct: float = Field(default=0.5, ge=0.0, le=5.0)
+
+    @model_validator(mode="after")
+    def validate_optimize_request(self):
+        if self.max_price_gbp < self.min_price_gbp:
+            raise ValueError("max_price_gbp must be greater than or equal to min_price_gbp")
+        return self
 
 
 class AdminKillSwitchRequest(BaseModel):
@@ -390,6 +617,12 @@ class AdminGlobalCapsRequest(BaseModel):
     max_pct_change: float = Field(0.2, ge=0.0, le=1.0)
     smoothing_alpha: float = Field(0.8, ge=0.0, le=1.0)
 
+    @model_validator(mode="after")
+    def validate_caps(self):
+        if self.max_price_gbp < self.min_price_gbp:
+            raise ValueError("max_price_gbp must be greater than or equal to min_price_gbp")
+        return self
+
 
 class AdminRegionOverrideRequest(BaseModel):
     region: str
@@ -399,6 +632,20 @@ class AdminRegionOverrideRequest(BaseModel):
     smoothing_alpha: float = Field(0.8, ge=0.0, le=1.0)
     multiplier: float = Field(1.0, ge=0.5, le=2.0)
 
+    @field_validator("region")
+    @classmethod
+    def validate_region(cls, value: str) -> str:
+        cleaned = value.strip().lower()
+        if not cleaned:
+            raise ValueError("region is required")
+        return cleaned
+
+    @model_validator(mode="after")
+    def validate_region_caps(self):
+        if self.max_price_gbp < self.min_price_gbp:
+            raise ValueError("max_price_gbp must be greater than or equal to min_price_gbp")
+        return self
+
 
 class OverridePriceRequest(BaseModel):
     listingId: str
@@ -406,12 +653,33 @@ class OverridePriceRequest(BaseModel):
     price: float = Field(..., gt=0)
     reason: str | None = None
 
+    @field_validator("date")
+    @classmethod
+    def validate_override_date(cls, value: str) -> str:
+        date.fromisoformat(value)
+        return value
+
 
 class ListingSettingsRequest(BaseModel):
     minPrice: float = Field(..., gt=0)
     maxPrice: float = Field(..., gt=0)
     smartPricingEnabled: bool = True
     discounts: dict[str, float] | None = None
+
+    @model_validator(mode="after")
+    def validate_settings(self):
+        if self.maxPrice < self.minPrice:
+            raise ValueError("maxPrice must be greater than or equal to minPrice")
+        discounts = self.discounts or {}
+        for key in ("weekly", "monthly"):
+            if key in discounts and not 0 <= float(discounts[key]) <= 100:
+                raise ValueError(f"{key} discount must be between 0 and 100")
+        return self
+
+
+class AdminApprovalActionRequest(BaseModel):
+    reason: str | None = None
+    reviewedBy: str | None = None
 
 
 def _run_quote(s: CarRentalPricingService, payload: dict) -> dict:
@@ -465,15 +733,21 @@ def root():
         "health": "/health",
         "metrics": "/metrics",
         "listings": "GET /listings",
+        "listings_query": "GET /listings/query",
+        "listings_filter_options": "GET /listings/filter-options",
+        "listings_export": "GET /listings/export",
         "listing_details": "GET /listing/{id}",
         "pricing_calendar": "GET /pricing-calendar?listingId=...",
         "demand_data": "GET /demand-data?listingId=...",
+        "simulation_data": "GET /simulation-data?listingId=...",
+        "dashboard_export": "GET /dashboard/export",
         "override_price": "POST /override-price",
         "quote_post": "POST /quote (JSON body)",
         "quote_batch": "POST /quote/batch",
         "quote_demo_browser": "GET /quote/demo",
         "interactive_docs": "/docs",
         "admin_config": "GET /admin/config",
+        "admin_review": "GET /admin/cars/review",
     }
 
 
@@ -483,6 +757,112 @@ def listings():
     return rows
 
 
+@app.get("/listings/query")
+def listings_query(
+    search: str | None = None,
+    page: int = Query(default=1),
+    pageSize: int = Query(default=20),
+    city: str | None = None,
+    country: str | None = None,
+    group: str | None = None,
+    supplierName: str | None = None,
+    minPrice: float | None = None,
+    maxPrice: float | None = None,
+    approvalStatus: str | None = None,
+    sortBy: str = "title",
+    sortOrder: str = "asc",
+):
+    items = _filtered_listings(
+        search=search,
+        city=city,
+        country=country,
+        group=group,
+        supplier_name=supplierName,
+        min_price=minPrice,
+        max_price=maxPrice,
+        approval_status=approvalStatus,
+        sort_by=sortBy,
+        sort_order=sortOrder,
+    )
+    paginated = _paginate(items, page=page, page_size=pageSize)
+    paginated["filtersApplied"] = {
+        "search": search,
+        "city": city,
+        "country": country,
+        "group": group,
+        "supplierName": supplierName,
+        "minPrice": minPrice,
+        "maxPrice": maxPrice,
+        "approvalStatus": approvalStatus,
+        "sortBy": sortBy,
+        "sortOrder": sortOrder,
+    }
+    return paginated
+
+
+@app.get("/listings/filter-options")
+def listings_filter_options():
+    items = _filtered_listings()
+    return {
+        "cities": sorted({str(x.get("city", "")) for x in items if x.get("city")}),
+        "countries": sorted({str(x.get("country", "")) for x in items if x.get("country")}),
+        "groups": sorted({str(x.get("group", "")) for x in items if x.get("group")}),
+        "suppliers": sorted({str(x.get("supplier_name", "")) for x in items if x.get("supplier_name")}),
+        "approvalStatuses": ["pending", "approved", "rejected"],
+    }
+
+
+@app.get("/listings/export")
+def listings_export(
+    search: str | None = None,
+    city: str | None = None,
+    country: str | None = None,
+    group: str | None = None,
+    supplierName: str | None = None,
+    minPrice: float | None = None,
+    maxPrice: float | None = None,
+    approvalStatus: str | None = None,
+    sortBy: str = "title",
+    sortOrder: str = "asc",
+    format: str = "csv",
+):
+    items = _filtered_listings(
+        search=search,
+        city=city,
+        country=country,
+        group=group,
+        supplier_name=supplierName,
+        min_price=minPrice,
+        max_price=maxPrice,
+        approval_status=approvalStatus,
+        sort_by=sortBy,
+        sort_order=sortOrder,
+    )
+    if format.lower() == "json":
+        return {"items": items, "count": len(items)}
+    return _to_csv_response(
+        "car-listings-export.csv",
+        items,
+        [
+            "id",
+            "title",
+            "location",
+            "city",
+            "country",
+            "group",
+            "supplier_name",
+            "revenue",
+            "occupancyRate",
+            "avgPrice",
+            "currency",
+            "approvalStatus",
+            "approvalReason",
+            "reviewedBy",
+            "reviewedAt",
+        ],
+    )
+
+
 @app.get("/listing/{listing_id}")
 def listing_details(listing_id: str):
     _, by_id = _ensure_listings_cache()
@@ -490,7 +870,7 @@ def listing_details(listing_id: str):
     if not item:
         raise HTTPException(status_code=404, detail={"message": "Listing not found"})
     settings = _current_settings_for(listing_id, item)
-    return {**item, **settings}
+    return {**item, **settings, **_approval_for(listing_id)}
 
 
 @app.get("/listing/{listing_id}/settings")
@@ -685,6 +1065,93 @@ def demand_data(listingId: str):
     return {"listingId": listingId, "points": points}
 
 
+@app.get("/simulation-data")
+def simulation_data(listingId: str | None = None):
+    rows, by_id = _ensure_listings_cache()
+    if not rows:
+        return {"items": [], "message": "No listings available"}
+    selected_listing_id = listingId or str(rows[0].get("id"))
+    item = by_id.get(selected_listing_id)
+    if not item:
+        raise HTTPException(status_code=404, detail={"message": "Listing not found"})
+    settings = _current_settings_for(selected_listing_id, item)
+    try_values = pricing_try_values(selected_listing_id)["suggested"]
+    demand_points = demand_data(selected_listing_id)["points"][-30:]
+    start_date = date.today() + timedelta(days=7)
+    return_date = start_date + timedelta(days=7)
+    return {
+        "listingId": selected_listing_id,
+        "listing": {**item, **_approval_for(selected_listing_id)},
+        "defaults": {
+            "city": item.get("city"),
+            "country": item.get("country"),
+            "group": item.get("group"),
+            "startDate": start_date.isoformat(),
+            "returnDate": return_date.isoformat(),
+            "minPriceGbp": try_values["minPrice"],
+            "maxPriceGbp": try_values["maxPrice"],
+            "stepGbp": 5,
+            "windowPct": 0.5,
+        },
+        "settings": settings,
+        "pricingTryValues": try_values,
+        "recentDemand": demand_points,
+        "availableListings": [
+            {"id": str(x.get("id")), "title": str(x.get("title", "")), "location": str(x.get("location", ""))}
+            for x in rows[:100]
+        ],
+    }
+
+
+@app.get("/dashboard/export")
+def dashboard_export(
+    section: str = "summary",
+    format: str = "csv",
+    listingId: str | None = None,
+):
+    section_name = section.strip().lower()
+    dashboard = _dashboard_payload(_filtered_listings())
+
+    if section_name == "summary":
+        summary_rows = [{"metric": k, "value": v} for k, v in dashboard["summary"].items()]
+        if format.lower() == "json":
+            return {"section": "summary", "items": summary_rows}
+        return _to_csv_response("dashboard-summary.csv", summary_rows, ["metric", "value"])
+
+    if section_name == "listings":
+        if format.lower() == "json":
+            return {"section": "listings", "items": dashboard["items"], "count": len(dashboard["items"])}
+        return _to_csv_response(
+            "dashboard-listings.csv",
+            dashboard["items"],
+            [
+                "id",
+                "title",
+                "location",
+                "city",
+                "country",
+                "group",
+                "supplier_name",
+                "revenue",
+                "occupancyRate",
+                "avgPrice",
+                "currency",
+                "approvalStatus",
+            ],
+        )
+
+    if section_name == "demand":
+        target_listing_id = listingId or (dashboard["items"][0]["id"] if dashboard["items"] else None)
+        if not target_listing_id:
+            raise HTTPException(status_code=404, detail={"message": "Listing not found"})
+        demand_rows = demand_data(str(target_listing_id))["points"]
+        if format.lower() == "json":
+            return {"section": "demand", "listingId": str(target_listing_id), "items": demand_rows}
+        return _to_csv_response("dashboard-demand.csv", demand_rows, ["date", "demandScore", "searchVolume", "bookings"])
+
+    raise HTTPException(status_code=400, detail={"message": "Unsupported dashboard export section"})
+
+
 @app.post("/override-price")
 def override_price(req: OverridePriceRequest):
     _, by_id = _ensure_listings_cache()
@@ -869,6 +1336,65 @@ def optimize(
 @app.get("/admin/config")
 def admin_get_config(_: None = Depends(verify_admin_api_key)):
     return get_admin_store().load()
+
+
+@app.get("/admin/cars/review")
+def admin_review_cars(
+    status: str | None = None,
+    search: str | None = None,
+    page: int = Query(default=1),
+    pageSize: int = Query(default=20),
+    _: None = Depends(verify_admin_api_key),
+):
+    items = _filtered_listings(
+        search=search,
+        approval_status=status,
+        sort_by="title",
+        sort_order="asc",
+    )
+    paginated = _paginate(items, page=page, page_size=pageSize)
+    paginated["filtersApplied"] = {"status": status, "search": search}
+    return paginated
+
+
+@app.post("/admin/cars/{listing_id}/approve")
+def admin_approve_car(
+    listing_id: str,
+    req: AdminApprovalActionRequest,
+    _: None = Depends(verify_admin_api_key),
+):
+    _, by_id = _ensure_listings_cache()
+    if listing_id not in by_id:
+        raise HTTPException(status_code=404, detail={"message": "Listing not found"})
+    data = _load_listing_approvals()
+    data[listing_id] = {
+        "approvalStatus": "approved",
+        "approvalReason": req.reason,
+        "reviewedBy": req.reviewedBy or "admin",
+        "reviewedAt": _utc_now_iso(),
+    }
+    _save_listing_approvals(data)
+    return {"ok": True, "listingId": listing_id, **_approval_for(listing_id)}
+
+
+@app.post("/admin/cars/{listing_id}/reject")
+def admin_reject_car(
+    listing_id: str,
+    req: AdminApprovalActionRequest,
+    _: None = Depends(verify_admin_api_key),
+):
+    _, by_id = _ensure_listings_cache()
+    if listing_id not in by_id:
+        raise HTTPException(status_code=404, detail={"message": "Listing not found"})
+    data = _load_listing_approvals()
+    data[listing_id] = {
+        "approvalStatus": "rejected",
+        "approvalReason": req.reason,
+        "reviewedBy": req.reviewedBy or "admin",
+        "reviewedAt": _utc_now_iso(),
+    }
+    _save_listing_approvals(data)
+    return {"ok": True, "listingId": listing_id, **_approval_for(listing_id)}
 
 
 @app.post("/admin/kill-switch")

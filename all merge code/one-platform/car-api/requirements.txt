@@ -10,6 +10,7 @@ uvicorn[standard]>=0.27
 slowapi>=0.1.9
 prometheus-fastapi-instrumentator>=6.1.0
 redis>=5.0
+psycopg2-binary>=2.9
 pytest>=8.0
 
 # Optional: regenerate Word exports (install: pip install python-docx)

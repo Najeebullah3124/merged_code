@@ -20,7 +20,20 @@ export function PricingControlPage() {
     })();
   }, [apiFetch, token]);
 
+  function validatePricingForm(requireRegion: boolean): string | null {
+    if (!Number.isFinite(minP) || minP <= 0) return "Min price must be greater than 0.";
+    if (!Number.isFinite(maxP) || maxP <= 0) return "Max price must be greater than 0.";
+    if (maxP < minP) return "Max price must be greater than or equal to min price.";
+    if (requireRegion && !region.trim()) return "Region is required.";
+    return null;
+  }
+
   async function saveCaps() {
+    const validationError = validatePricingForm(false);
+    if (validationError) {
+      setMsg(validationError);
+      return;
+    }
     const r = await apiFetch("/api/admin/global-caps", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -44,6 +57,11 @@ export function PricingControlPage() {
   }
 
   async function saveRegion() {
+    const validationError = validatePricingForm(true);
+    if (validationError) {
+      setMsg(validationError);
+      return;
+    }
     const r = await apiFetch("/api/admin/region-override", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
